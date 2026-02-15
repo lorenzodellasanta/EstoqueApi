@@ -1,74 +1,95 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Estoque.Data;
 using Estoque.Models;
+using Estoque.Repository;
 
 namespace Estoque.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-
     public class ProdutosController : ControllerBase
     {
-        private readonly AppDbContext _context;
 
-        public ProdutosController(AppDbContext context)
+        private static IProdutoRepository _produtoRepository;
+        public ProdutosController(IProdutoRepository produtoRepository)
         {
-            _context = context;
+            _produtoRepository = produtoRepository;
         }
 
         //Lista todos os itens do banco de dados!!!
         [HttpGet]
-        public IActionResult ListarProduto()
+        public async Task<IActionResult>GetAllProdutos()
         {
-            return Ok(_context.Produtos.ToList());
+            var produtos = _produtoRepository.GetProdutosAndCategoria();
+
+            return Ok(produtos);
         }
 
         // Busca item especifico do banco de dados!!!
         [HttpGet("{id}")]
-        public IActionResult BuscaProduto(int id)
+        public async Task<IActionResult>GetProduto(int id)
         {
-            var produto = _context.Produtos.Find(id);
-            if(produto == null)
+            var produto = await _produtoRepository.GetByIdAsync(id);
+
+            if(produto is null)
             {
-                return NotFound();
+                return NotFound("Produto não encontrado!");
             }
 
             return Ok(produto);
         }
 
         [HttpPost]
-        public IActionResult CriarProduto(Produto produto)
+        public  async Task<IActionResult> AddProduto(Produto produto)
         {
-            _context.Produtos.Add(produto);
-            _context.SaveChanges();
+            var produtos = await _produtoRepository.GetAllAsync();
+            var novoProduto = produtos.Where(nProduto => nProduto.Nome == produto.Nome);
+
+            if(novoProduto is null)
+            {
+                return NotFound("Produto inexistente");
+            }
+
+            _produtoRepository.Insert(produto);
+            await _produtoRepository.SaveChangesAsync();
+
             return Ok(produto);
         }
 
         [HttpPut("{id}")]
-        public IActionResult AtualizarProduto(int id, Produto produto)
+        public async Task<IActionResult> UpdateProduto(int id, Produto produto)
         {
-            if(id!= produto.Id)
+            var produtoAtualizado = await _produtoRepository.GetByIdAsync(id);
+
+            if(produtoAtualizado is null)
             {
-                return BadRequest();
+                return NotFound("Produto Inexistente");
             }
 
-            _context.Produtos.Update(produto);
-            _context.SaveChanges();
-            return NoContent();
+            produtoAtualizado.Nome = produto.Nome;
+            produtoAtualizado.Quantidade = produto.Quantidade;
+            produtoAtualizado.Preco = produto.Preco;
+            produtoAtualizado.Categoria = produto.Categoria;
+
+            _produtoRepository.Update(produtoAtualizado);
+            await _produtoRepository.SaveChangesAsync();
+
+            return Ok(produtoAtualizado);
         }
 
         [HttpDelete("{id}")]
-        public IActionResult RemoverProduto(int id)
+        public async Task<IActionResult> DeleteProduto(int id)
         {
-            var produto = _context.Produtos.Find(id);
-            if(produto == null)
+            var produto = await _produtoRepository.GetByIdAsync(id);
+
+            if(produto is null)
             {
-                return NotFound();
+                return NotFound("Produto Inexistente");
             }
 
-            _context.Produtos.Remove(produto);
-            _context.SaveChanges();
-            return NoContent();
+            _produtoRepository.Delete(produto);
+            await _produtoRepository.SaveChangesAsync();
+
+            return Ok(produto);
         }
     }
 
