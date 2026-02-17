@@ -17,7 +17,7 @@ namespace Estoque.Repository
         public List<Produto>? GetProdutosAndCategoria()
         {
             var query = from p in _context.Produtos
-                        join c in _context.Categorias on p.IdCategoria equals c.Id
+                        join c in _context.Categorias on p.CategoriaId equals c.Id
                         select new Produto
                         {
                             Id = p.Id,
